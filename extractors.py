@@ -179,7 +179,7 @@ class ContentExtractor(object):
                 content = match.text or ''
             if len(content) > 0:
                 authors.extend(parse_byline(content))
-            
+
         #print(len(authors))
 
         # Try 2: Search popular author tags for authors
@@ -190,7 +190,7 @@ class ContentExtractor(object):
         VALS = ['author', 'writer', 'profile', 'view_info', 'reporter', 'info-txt', 'name', 'art_info',
         'email.datein', 'editor', 'avrdate', 'member', 'psa', 'news_date', 'wrap_time',
         'infomail', 'report', 'e_article', 'arl_view_writer', 'info_part', 'customByline',
-        '기자의 다른기사보기', 'View_Info', 'font_email', 'repoter', 'read_txt']
+        '기자의 다른기사보기', 'View_Info', 'font_email', 'repoter', 'read_txt', 'arl_view_writer']
         #if len(authors) == 0:
         for attr in ATTRS:
             for val in VALS:
@@ -310,6 +310,7 @@ class ContentExtractor(object):
         - title tag is the most reliable (inherited from Goose)
         - h1, if properly detected, is the best (visible to users)
         - og:title and h1 can help improve the title extraction
+        - 특정 태그 클래스를 사용해 파싱
         - python == is too strict, often we need to compare filtered
           versions, i.e. lowercase and ignoring special chars
 
@@ -354,12 +355,29 @@ class ContentExtractor(object):
         self.get_meta_content(doc, 'meta[property="og:title"]') or
         self.get_meta_content(doc, 'meta[name="og:title"]') or '')
 
+        #특정 태그의 클래스 명으로 파싱
+        VALS = ['view_t', 'view_title', 'read_title', 't1_text', 'sgisa_title']
+        list_title = []
+        title_text_class = ''
+        for val in VALS:
+            # found = doc.xpath('//*[@%s="%s"]' % (attr, val))
+            found = self.parser.getElementsByTag(doc, attr='class', value=val)
+            list_title.extend(found)
+        #거의 대부분 리스트의 크기는 1 or 0
+        for f in list_title:
+            title_text_class = self.parser.getText(f)
+
         # create filtered versions of title_text, title_text_h1, title_text_fb
         # for finer comparison
-        filter_regex = re.compile(r'[^a-zA-Z0-9\ ]')
-        filter_title_text = filter_regex.sub('', title_text).lower()
-        filter_title_text_h1 = filter_regex.sub('', title_text_h1).lower()
-        filter_title_text_fb = filter_regex.sub('', title_text_fb).lower()
+        #filter_regex = re.compile(r'[^a-zA-Z0-9\ ]')
+        #한글만 파싱 lower는 필요 없는 부분
+        #길이 비교를 위해 파싱할뿐 나중에 실제 제목은 파싱 되지 않은 전체를 내보냄
+        hangul = re.compile('[^ ㄱ-ㅣ가-힣0-9]+')
+        filter_title_text = hangul.sub('', title_text).lower()
+        filter_title_text_h1 = hangul.sub('', title_text_h1).lower()
+        filter_title_text_fb = hangul.sub('', title_text_fb).lower()
+        filter_title_text_class = hangul.sub('',title_text_class)
+
 
         # check for better alternatives for title_text and possibly skip splitting
         if title_text_h1 == title_text:
@@ -372,9 +390,15 @@ class ContentExtractor(object):
                 and len(title_text_h1) > len(title_text_fb):
             title_text = title_text_h1
             used_delimeter = True
+        #보통 메타데이터에 있는 og:title이 제목인 경우가 많다
         elif filter_title_text_fb and filter_title_text_fb != filter_title_text \
-                and filter_title_text.startswith(filter_title_text_fb):
+                and len(filter_title_text_fb) > len(filter_title_text):
+                #filter_title_text.startswith(filter_title_text_fb):
             title_text = title_text_fb
+            used_delimeter = True
+        elif filter_title_text_class and filter_title_text_class != filter_title_text \
+                and len(filter_title_text_class) > len(filter_title_text):
+            title_text = title_text_class
             used_delimeter = True
 
         # split title with |
@@ -412,7 +436,7 @@ class ContentExtractor(object):
         # in some cases the final title is quite similar to title_text_h1
         # (either it differs for case, for special chars, or it's truncated)
         # in these cases, we prefer the title_text_h1
-        filter_title = filter_regex.sub('', title).lower()
+        filter_title = hangul.sub('', title).lower()
         if filter_title_text_h1 == filter_title:
             title = title_text_h1
 
@@ -424,15 +448,15 @@ class ContentExtractor(object):
         large_text_length = 0
         large_text_index = 0
         title_pieces = splitter.split(title)
-
+        #한글로 파싱
         if hint:
-            filter_regex = re.compile(r'[^a-zA-Z0-9\ ]')
-            hint = filter_regex.sub('', hint).lower()
+            hangul = re.compile('[^ ㄱ-ㅣ가-힣0-9]+')
+            hint = hangul.sub('', hint).lower()
 
         # find the largest title piece
         for i, title_piece in enumerate(title_pieces):
             current = title_piece.strip()
-            if hint and hint in filter_regex.sub('', current).lower():
+            if hint and hint in hangul.sub('', current).lower():
                 large_text_index = i
                 break
             if len(current) > large_text_length:
