@@ -144,6 +144,20 @@ class ContentExtractor(object):
 
             return _authors
 
+        #기자이름 파싱하는 클래스의 태그 내에 딸려오는 단어들 제거
+        def parse_byword(author_list):
+
+            wordlist = ['비밀번호', '비회원', '글쓰기', '기자승인', '기사입력', '최종편집',
+            '최신기사', '확인', 'Home', '기자이미지', '제휴뉴스', 'ㅣ', '이름', '회원가입']
+            authors_ = []
+
+            #목록에 해당하는 단어 삭제
+            for i in author_list:
+                for w in wordlist:
+                    i = i.replace(str(w), '')
+                authors_.append(i)
+            return authors_
+
         # Try 1: Search metadata
         # 메타 태그를 통해 기사의 정보를 넣은 경우는 메타에서 불러올 수 있다
         # 메타 데이터가 없는 경우 스트링 추가 x
@@ -180,8 +194,6 @@ class ContentExtractor(object):
             if len(content) > 0:
                 authors.extend(parse_byline(content))
 
-        #print(len(authors))
-
         # Try 2: Search popular author tags for authors
         # 태그 조건 검색 <... ATTRS = VALS(포함) ...> 과 동일한 테그의 xpath로 검색
         # VALS 에 id, class 명을 추가하면 해당 사이트 기자 이름 파싱 가능
@@ -201,7 +213,6 @@ class ContentExtractor(object):
         for match in matches:
             content = ''
             possible_txt = self.parser.getText(match)
-            #print(possible_txt)
 
             #영어제거
             hangul = re.compile('[^ ㄱ-ㅣ가-힣]+')
@@ -225,11 +236,10 @@ class ContentExtractor(object):
             #r = re.search('(\w)*(\s)?기자',self.parser.getText(doc))
             if r is not None:
                 authors.append(r.group())
-
+        #중복된 값들을 제외
         uniq_list = uniqify_list(authors)
-
-        #중복된 값들을 제외하고 내보내줌
-        return uniqify_list(authors)
+        #쓸데없는 단어들 제거
+        return parse_byword(uniq_list)
 
 
         # TODO Method 2: Search raw html for a by-line
