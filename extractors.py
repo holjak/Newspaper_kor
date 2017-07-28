@@ -130,8 +130,8 @@ class ContentExtractor(object):
                         _authors.append(' '.join(curname))
                         curname = []
                 elif not contains_digits(token):
-                    #5글자까지만 제한
-                    if len(token) < 6:
+                    #글자수 제한
+                    if len(token) < 9:
                         curname.append(token)
 
 
@@ -148,7 +148,8 @@ class ContentExtractor(object):
         def parse_byword(author_list):
 
             wordlist = ['비밀번호', '비회원', '글쓰기', '기자승인', '기사입력', '최종편집',
-            '최신기사', '확인', 'Home', '기자이미지', '제휴뉴스', 'ㅣ', '이름', '회원가입']
+            '최신기사', '확인', 'Home', '기자이미지', '제휴뉴스', 'ㅣ', '이름', '회원가입',
+            '취소하기']
             authors_ = []
 
             #목록에 해당하는 단어 삭제
@@ -183,14 +184,17 @@ class ContentExtractor(object):
                 mm = match.xpath('@content')
                 if len(mm) > 0:
                     content = mm[0]
+            else:
+                content = match.text or ''
+            """
             #'og:description' 의 긴 정보에서 기자 이름만 파싱
+
             if len(content) > 15:
                 author_pattern = re.compile('(\w)*(\s)?기자')
                 parsed_name = author_pattern.search(content)
                 if parsed_name is not None:
                     content = parsed_name.group()
-            else:
-                content = match.text or ''
+            """
             if len(content) > 0:
                 authors.extend(parse_byline(content))
 
@@ -203,7 +207,7 @@ class ContentExtractor(object):
         'email.datein', 'editor', 'avrdate', 'member', 'psa', 'news_date', 'wrap_time',
         'infomail', 'report', 'e_article', 'arl_view_writer', 'info_part', 'customByline',
         '기자의 다른기사보기', 'View_Info', 'font_email', 'repoter', 'read_txt', 'arl_view_writer']
-        #if len(authors) == 0:
+
         for attr in ATTRS:
             for val in VALS:
                 # found = doc.xpath('//*[@%s="%s"]' % (attr, val))
