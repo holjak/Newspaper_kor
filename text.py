@@ -82,7 +82,6 @@ class StopWords(object):
     def candidate_words(self, stripped_input):
         return stripped_input.split(' ')
 
-    #stopwords-ko에 있는 단어들 매칭
     def get_stopword_count(self, content):
         if not content:
             return WordStats()
@@ -134,13 +133,13 @@ class StopWordsArabic(StopWords):
             words.append(s.stem(word))
         return words
 
-
+#한국어
 class StopWordsKorean(StopWords):
     """Korean segmentation
     """
     def __init__(self, language='ko'):
         super(StopWordsKorean, self).__init__(language='ko')
-
+    #stopwords-ko에 있는 단어들 매칭
     def get_stopword_count(self, content):
         if not content:
             return WordStats()
@@ -151,10 +150,13 @@ class StopWordsKorean(StopWords):
         c = 0
         for w in candidate_words:
             c += 1
-            for stop_word in self.STOP_WORDS:
-                overlapping_stopwords.append(stop_word)
-
+            #for stop_word in self.STOP_WORDS:
+                #overlapping_stopwords.append(stop_word)
+            if w in self.STOP_WORDS:
+                overlapping_stopwords.append(w)
+        #글자수 + stopword count를 점수로 부여
         ws.set_word_count(c)
-        ws.set_stopword_count(len(overlapping_stopwords))
+        ws.set_stopword_count(len(overlapping_stopwords) + c)
         ws.set_stop_words(overlapping_stopwords)
+
         return ws

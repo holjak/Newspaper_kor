@@ -892,20 +892,18 @@ class ContentExtractor(object):
                 nodes_with_text.append(node)
 
         nodes_number = len(nodes_with_text)
-        #print (len(nodes_to_check))
-        #print (nodes_number)
 
         negative_scoring = 0
         bottom_negativescore_nodes = float(nodes_number) * 0.25
 
         for node in nodes_with_text:
-            #print(self.parser.getText(node))
             boost_score = float(0)
             # boost
             if self.is_boostable(node):
                 if cnt >= 0:
                     boost_score = float((1.0 / starting_boost) * 50)
                     starting_boost += 1
+
             # nodes_number
             if nodes_number > 15:
                 if (nodes_number - i) <= bottom_negativescore_nodes:
@@ -943,7 +941,6 @@ class ContentExtractor(object):
         top_node_score = 0
         for e in parent_nodes:
             score = self.get_score(e)
-
             if score > top_node_score:
                 top_node = e
                 top_node_score = score
@@ -960,6 +957,7 @@ class ContentExtractor(object):
         paragraphs so we'll want to make sure that the next sibling is a
         paragraph and has at least some substantial weight to it.
         """
+        #연속된 p태그에 대해 stopwordcnt가 일정수 이상일 경우 점수를 조금 더 준다
         para = "p"
         steps_away = 0
         minimum_stopword_count = 5
@@ -1129,6 +1127,7 @@ class ContentExtractor(object):
         """Returns a list of nodes we want to search
         on like paragraphs and tables
         """
+        #체크할 노드의 태그
         nodes_to_check = []
         for tag in ['p', 'pre', 'td']:
             items = self.parser.getElementsByTag(doc, tag=tag)
