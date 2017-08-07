@@ -951,7 +951,8 @@ class ContentExtractor(object):
         return top_node
 
     def is_boostable(self, node):
-        """Alot of times the first paragraph might be the caption under an image
+        """
+        Alot of times the first paragraph might be the caption under an image
         so we'll want to make sure if we're going to boost a parent node that
         it should be connected to other paragraphs, at least for the first n
         paragraphs so we'll want to make sure that the next sibling is a
@@ -1129,7 +1130,7 @@ class ContentExtractor(object):
         """
         #체크할 노드의 태그
         nodes_to_check = []
-        for tag in ['p', 'pre', 'td']:
+        for tag in ['p', 'pre', 'td', 'textarea']:
             items = self.parser.getElementsByTag(doc, tag=tag)
             nodes_to_check += items
         return nodes_to_check

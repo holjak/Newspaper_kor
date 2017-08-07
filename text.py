@@ -150,8 +150,6 @@ class StopWordsKorean(StopWords):
         c = 0
         for w in candidate_words:
             c += 1
-            #for stop_word in self.STOP_WORDS:
-                #overlapping_stopwords.append(stop_word)
             if w in self.STOP_WORDS:
                 overlapping_stopwords.append(w)
         #글자수 + stopword count를 점수로 부여
