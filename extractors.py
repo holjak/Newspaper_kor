@@ -344,7 +344,6 @@ class ContentExtractor(object):
         # title elem found
         title_text = self.parser.getText(title_element[0])
         used_delimeter = False
-
         # title from h1
         # - extract the longest text from all h1 elements
         # - too short texts (fewer than 2 words) are discarded
@@ -888,7 +887,7 @@ class ContentExtractor(object):
             word_stats = self.stopwords_class(language=self.language). \
                 get_stopword_count(text_node)
             high_link_density = self.is_highlink_density(node)
-            if word_stats.get_stopword_count() > 2  and not high_link_density:
+            if word_stats.get_stopword_count() >= 1  and not high_link_density:
                 nodes_with_text.append(node)
 
         nodes_number = len(nodes_with_text)
@@ -899,6 +898,7 @@ class ContentExtractor(object):
         for node in nodes_with_text:
             boost_score = float(0)
             # boost
+
             if self.is_boostable(node):
                 if cnt >= 0:
                     boost_score = float((1.0 / starting_boost) * 50)

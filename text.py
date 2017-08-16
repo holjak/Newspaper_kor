@@ -147,14 +147,15 @@ class StopWordsKorean(StopWords):
         stripped_input = self.remove_punctuation(content)
         candidate_words = self.candidate_words(stripped_input)
         overlapping_stopwords = []
-        c = 0
+        word_count = 0  #전체 음절 갯수
         for w in candidate_words:
-            c += 1
+            word_count += 1
             if w in self.STOP_WORDS:
-                overlapping_stopwords.append(w)
+                overlapping_stopwords.append(w)     #스탑워드 갯수
         #글자수 + stopword count를 점수로 부여
-        ws.set_word_count(c)
-        ws.set_stopword_count(len(overlapping_stopwords) + c)
+        #TODO 가중치 설정하기
+        ws.set_word_count(word_count)
+        ws.set_stopword_count(len(overlapping_stopwords)*5 + word_count)
         ws.set_stop_words(overlapping_stopwords)
 
         return ws
