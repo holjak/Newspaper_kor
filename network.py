@@ -15,9 +15,14 @@ from .configuration import Configuration
 from .mthreading import ThreadPool
 from .settings import cj
 
+from selenium import webdriver
+from selenium.webdriver.support.ui import WebDriverWait
+import copy
+
 log = logging.getLogger(__name__)
-
-
+#TODO 드라이버 경로는 환경에 맞춰 바꿔줄 것
+driver = webdriver.PhantomJS('C:/Users/USER/AppData/Local/Programs/Python/Python36-32/Lib/site-packages/newspaper/phantomjs-2.1.1-windows/bin/')
+# driver = webdriver.Chrome('C:/Users/USER/Desktop/Office/selenium/chromedriver_win32/chromedriver')
 FAIL_ENCODING = 'ISO-8859-1'
 
 def get_request_kwargs(timeout, useragent):
@@ -33,7 +38,7 @@ def get_request_kwargs(timeout, useragent):
 
 
 def get_html(url, config=None, response=None):
-    """HTTP response code agnostic 
+    """HTTP response code agnostic
     """
     try:
         return get_html_2XX_only(url, config, response)
@@ -41,10 +46,10 @@ def get_html(url, config=None, response=None):
         log.debug('get_html() error. %s on URL: %s' % (e, url))
         return ''
 
-
+#기존 html소스를 받아오던 함수
 def get_html_2XX_only(url, config=None, response=None):
     """Consolidated logic for http requests from newspaper. We handle error cases:
-    - Attempt to find encoding of the html by using HTTP header. Fallback to 
+    - Attempt to find encoding of the html by using HTTP header. Fallback to
       'ISO-8859-1' if not provided.
     - Error out if a non 2XX HTTP response code is returned.
     """
@@ -80,6 +85,47 @@ def _get_html_from_response(response):
         html = response.content
     return html or ''
 
+#네이버 블로그의 경우 frame 내부의 주소로 들어가야 실제 문서가 담긴 부분이 나오기 때문에
+#실제 내용이 들어있는 프레임을 찾는 함수
+def find_real_frame(html):
+    global driver
+    frames = driver.find_elements_by_xpath('//frame[@src]')
+    print(len(frames))
+    i = 1
+    for frame in frames:
+        try:
+            driver.switch_to.frame(driver.find_element_by_xpath('//frame[@src][' + str(i) + ']'))
+            wait = WebDriverWait(driver, 30)
+            try:
+                wait.until(lambda driver: driver.execute_script('return jQuery.active == 0'))
+            except:
+                pass
+            c_html = find_real_frame(driver.page_source)
+            if len(html) < len(driver.page_source): # 페이지 크기로 비교
+                html = driver.page_source
+            if len(html) < c_html:
+                html = c_html
+            driver.switch_to.default_content()
+        except:
+            pass
+
+        i = i + 1
+
+    return html
+
+# 자바스크립트 및 ajax를 통해 내용이 로딩 되는 사이트를 위해 셀레니움으로 html소스를 받아옴
+def get_html_from_selenium(url):
+    html = ''
+    global driver
+    driver.get(url)
+    wait = WebDriverWait(driver, 30)
+    try:
+        wait.until(lambda driver: driver.execute_script('return jQuery.active == 0'))
+    except:
+        pass
+
+    html = find_real_frame(driver.page_source)
+    return html
 
 class MRequest(object):
     """Wrapper for request object for multithreading. If the domain we are
@@ -124,4 +170,3 @@ def multithread_request(urls, config=None):
 
     pool.wait_completion()
     return m_requests
-

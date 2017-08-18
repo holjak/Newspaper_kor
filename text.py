@@ -55,7 +55,7 @@ class WordStats(object):
     def set_word_count(self, cnt):
         self.word_count = cnt
 
-
+# 타 언어에서 쓰는 stopword 체크함수
 class StopWords(object):
 
     TRANS_TABLE = str.maketrans('', '')
@@ -90,7 +90,7 @@ class StopWords(object):
         candidate_words = self.candidate_words(stripped_input)
         overlapping_stopwords = []
         c = 0
-        #print (candidate_words)
+
         for w in candidate_words:
             c += 1
             if w.lower() in self.STOP_WORDS:
@@ -133,7 +133,7 @@ class StopWordsArabic(StopWords):
             words.append(s.stem(word))
         return words
 
-#한국어
+#한국어에 쓰이는 stopword 체크 함수
 class StopWordsKorean(StopWords):
     """Korean segmentation
     """
@@ -151,9 +151,9 @@ class StopWordsKorean(StopWords):
         for w in candidate_words:
             word_count += 1
             if w in self.STOP_WORDS:
-                overlapping_stopwords.append(w)     #스탑워드 갯수
-        #글자수 + stopword count를 점수로 부여
-        #TODO 가중치 설정하기
+                overlapping_stopwords.append(w)     #스탑워드들이 나올때 마다 리스트에 넣음 
+        #글자수 + stopword count를 stopword count 점수로 부여함
+        #가중치 설정하기
         ws.set_word_count(word_count)
         ws.set_stopword_count(len(overlapping_stopwords)*5 + word_count)
         ws.set_stop_words(overlapping_stopwords)

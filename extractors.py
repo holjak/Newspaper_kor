@@ -79,6 +79,7 @@ class ContentExtractor(object):
         def contains_digits(d):
             return bool(_digits.search(d))
 
+        #리스트의 중복같을 제거해준다
         def uniqify_list(lst):
             """Remove duplicates from provided list but maintain original order.
               Derived from http://www.peterbe.com/plog/uniqifiers-benchmark
@@ -92,6 +93,7 @@ class ContentExtractor(object):
                 result.append(item.title())
             return result
 
+        #받아온 기자이름란에 다른 불필요한 값을들 쳐내고 줄여주는 함수
         def parse_byline(search_str):
             """
             Takes a candidate line of html or text and
@@ -123,7 +125,6 @@ class ContentExtractor(object):
             delimiters = ['and', ',', '']
 
             #토큰화 한 문자열을 분류하는 작업
-
             for token in name_tokens:
                 if token in delimiters:
                     if len(curname) > 0:
@@ -134,9 +135,8 @@ class ContentExtractor(object):
                     if len(token) < 9:
                         curname.append(token)
 
-
             # One last check at end
-            # 김xx xx일보 기자, 김xx 기자, 김xx 보다 긴 스트링배열 제외
+            # [김xx] [xx일보] [기자], [김xx] [기자], [김xx] 보다 긴 스트링배열 제외
             valid_name = ((len(curname) >= 1) and (len(curname) < 4))
 
             if valid_name:
@@ -144,7 +144,7 @@ class ContentExtractor(object):
 
             return _authors
 
-        #기자이름 파싱하는 클래스의 태그 내에 딸려오는 단어들 제거
+        #기자이름 파싱하는 클래스의 태그 내에 딸려오는 불필요한 단어들 제거
         def parse_byword(author_list):
 
             wordlist = ['비밀번호', '비회원', '글쓰기', '기자승인', '기사입력', '최종편집',
@@ -171,7 +171,7 @@ class ContentExtractor(object):
         #'og:description' - 기자이름, 기사제목으로 구성된 문자열
 
         matches_meta = []
-
+        #위의 클래스, 변수명과 매칭되는 후보군 찾기
         for attr in ATTRS_M:
             for val in VALS_M:
                 # found = doc.xpath('//*[@%s="%s"]' % (attr, val))
@@ -207,10 +207,9 @@ class ContentExtractor(object):
         'email.datein', 'editor', 'avrdate', 'member', 'psa', 'news_date', 'wrap_time',
         'infomail', 'report', 'e_article', 'arl_view_writer', 'info_part', 'customByline',
         '기자의 다른기사보기', 'View_Info', 'font_email', 'repoter', 'read_txt', 'arl_view_writer']
-
+        #후보군 찾기
         for attr in ATTRS:
             for val in VALS:
-                # found = doc.xpath('//*[@%s="%s"]' % (attr, val))
                 found = self.parser.getElementsByTag(doc, attr=attr, value=val)
                 matches.extend(found)
 
@@ -226,6 +225,7 @@ class ContentExtractor(object):
                 authors.extend(parse_byline(self.parser.getText(match)))
 
         #try 3 : 못찾은 경우 마지막으로 검사했던 문자열에서 기자 단어 유무를 본 뒤 찾아본다
+        #위의 1,2단계는 글자수 제한으로 인해 못들고 오는 경우가 있기 때문
         if len(authors) == 0:
             for match in matches:
                 content = ''
@@ -234,10 +234,10 @@ class ContentExtractor(object):
                     authors.extend(parse_byline(self.parser.getText(match)))
 
         #try 4 : 못찾은 경우 전체 패턴매칭
+        #이방식으로 들고오는 경우는 많지 않음.
         if len(authors) == 0:
             author_pattern = re.compile('(\w)*(\s)?기자')
             r = author_pattern.search(self.parser.getText(doc))
-            #r = re.search('(\w)*(\s)?기자',self.parser.getText(doc))
             if r is not None:
                 authors.append(r.group())
         #중복된 값들을 제외
@@ -316,7 +316,7 @@ class ContentExtractor(object):
                     return datetime_obj
 
         return None
-
+    #제목을 찾는 함수
     def get_title(self, doc):
         """Fetch the article title and analyze it
 
@@ -348,6 +348,7 @@ class ContentExtractor(object):
         # - extract the longest text from all h1 elements
         # - too short texts (fewer than 2 words) are discarded
         # - clean double spaces
+        # h1태그의 내용을 파싱
         title_text_h1 = ''
         title_element_h1_list = self.parser.getElementsByTag(doc,
                                                              tag='h1') or []
@@ -383,7 +384,7 @@ class ContentExtractor(object):
         # create filtered versions of title_text, title_text_h1, title_text_fb
         # for finer comparison
         #filter_regex = re.compile(r'[^a-zA-Z0-9\ ]')
-        #한글만 파싱 lower는 필요 없는 부분
+        #한글만 파싱 lower()는 영어를 소문자로 바꾸는 것이기 때문에 크게 필요 없는 부분
         #길이 비교를 위해 파싱할뿐 나중에 실제 제목은 파싱 되지 않은 전체를 내보냄
         hangul = re.compile('[^ ㄱ-ㅣ가-힣0-9]+')
         filter_title_text = hangul.sub('', title_text).lower()
@@ -881,13 +882,14 @@ class ContentExtractor(object):
         parent_nodes = []
         nodes_with_text = []
 
-        #stoprod-kr 에 있는 단어들을 하나씩 매칭해 일정 갯수 이상일 경우 해당 노드 반환
+        #각 노드에에 있는 음절이 1개 이상일 경우 해당 노드를 검사한다
         for node in nodes_to_check:
             text_node = self.parser.getText(node)
             word_stats = self.stopwords_class(language=self.language). \
                 get_stopword_count(text_node)
+            #해당 태그에 링크가 많은지 조사해서 링크가 많은경우 조사하지 않는다
             high_link_density = self.is_highlink_density(node)
-            if word_stats.get_stopword_count() >= 1  and not high_link_density:
+            if word_stats.get_word_count() >= 1  and not high_link_density:
                 nodes_with_text.append(node)
 
         nodes_number = len(nodes_with_text)
@@ -898,7 +900,7 @@ class ContentExtractor(object):
         for node in nodes_with_text:
             boost_score = float(0)
             # boost
-
+            # 연속된 음절 갯수가 유효한 p가 등장할때 추가적으로 점수를 부여한다
             if self.is_boostable(node):
                 if cnt >= 0:
                     boost_score = float((1.0 / starting_boost) * 50)

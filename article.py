@@ -4,6 +4,8 @@ __author__ = 'Lucas Ou-Yang'
 __license__ = 'MIT'
 __copyright__ = 'Copyright 2014, Lucas Ou-Yang'
 
+import re
+
 import logging
 import copy
 import os
@@ -27,7 +29,8 @@ from .videos.extractors import VideoExtractor
 
 log = logging.getLogger(__name__)
 
-
+from selenium.common.exceptions import *
+from selenium.common.exceptions import TimeoutException
 class ArticleDownloadState(object):
     NOT_STARTED = 0
     FAILED_RESPONSE = 1
@@ -36,7 +39,6 @@ class ArticleDownloadState(object):
 
 class ArticleException(Exception):
     pass
-
 
 class Article(object):
     """Article objects abstract an online news article page
@@ -152,6 +154,8 @@ class Article(object):
         self.parse()
         self.nlp()
 
+
+    # network 클래스의 함수를 호출해 html문서를 가져오는 부분
     def download(self, input_html=None, title=None, recursion_counter=0):
         """Downloads the link's HTML content, don't use if you are batch async
         downloading articles
@@ -161,8 +165,10 @@ class Article(object):
         """
         if input_html is None:
             try:
-                html = network.get_html_2XX_only(self.url, self.config)
-            except requests.exceptions.RequestException as e:
+                # html = network.get_html_2XX_only(self.url, self.config)
+                html = network.get_html_from_selenium(self.url)
+            # except requests.exceptions.RequestException as e:
+            except TimeoutException as e:
                 self.download_state = ArticleDownloadState.FAILED_RESPONSE
                 self.download_exception_msg = str(e)
                 log.debug('Download failed on URL %s because of %s' %
@@ -178,9 +184,28 @@ class Article(object):
                     input_html=network.get_html(meta_refresh_url),
                     recursion_counter=recursion_counter + 1)
 
+        #파일 저장을 위한 함수 한국어 인코딩에서 특수문자 등이 있을 경우 작동하지 않을 수 있다.
+        #self.make_file(self.title, self.url, html)
+
         self.set_html(html)
         self.set_title(title)
+    #파일을 저장하는 함수
+    def make_file(self, title, url, html):
+        file_name = re.sub('\W','_',url) + '.log'
+        f = open(file_name, 'w', encoding='utf8')
 
+        # for bytes
+        try:
+            f.write(html.decode('utf8'))
+        except:
+            try:
+                f.write(html.decode('euc-kr'))
+            except:
+                # string
+                pass
+        f.close()
+
+    #다운받은 html파일을 파싱하는 부분
     def parse(self):
         self.throw_if_not_downloaded_verbose()
 
@@ -237,9 +262,12 @@ class Article(object):
             self.clean_doc)
 
         # Before any computations on the body, clean DOM object
+        # html을 태그스코어링을 하기 전에 cleaner를 호출해 스코어링에 용이하게 변경
         self.doc = document_cleaner.clean(self.doc)
 
+        #정리된 html 문서에서 태그스코어링 후 가장 점수가 높은 노드를 반환
         self.top_node = self.extractor.calculate_best_node(self.doc)
+        #해당 노드의 텍스트를 추출하는 과정
         if self.top_node is not None:
             video_extractor = VideoExtractor(self.config, self.top_node)
             self.set_movies(video_extractor.get_videos())
